@@ -1,7 +1,5 @@
 library(lme4)
 library(tidyverse)
-library(here)
-library(lmerTest)
 
 
 d <- read_csv("https://raw.githubusercontent.com/manybabies/mb1-analysis-public/master/processed_data/03_data_trial_main.csv", 
