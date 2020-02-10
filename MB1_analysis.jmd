@@ -1,0 +1,43 @@
+Attach packages to be used
+```{julia;label=packages}
+using CSV            # read and write .csv files
+using DataFrames
+using DataFramesMeta # dplyr-like operations
+using MixedModels
+using StatsBase      # basic statistics functions
+```
+
+Download and read the data.
+```{julia;label=download}
+mb1 = CSV.read(
+    download("https://raw.githubusercontent.com/manybabies/mb1-analysis-public/master/processed_data/03_data_trial_main.csv"),
+    missingstrings=["NA","N/A"],
+    truestrings=["TRUE"],
+    falsestrings=["FALSE"])
+describe(mb1)
+```
+The `gender` variable should be `F`, `M`, or `missing` but some values are miscoded.
+```{julia;label=gendervals}
+countmap(mb1.gender)
+```
+Recoding the levels of gender and add the `item`
+```{julia;label=genderrecode}
+mb1a = @linq mb1 |>
+    transform(gender = recode(:gender, "0"=>missing, "MALE"=>"M", "FEMALE"=>"F"),
+              item = string.(:stimulus_num, :trial_type),
+              age_mo = :age_mo .- mean(:age_mo),
+              method = levels!(categorical(:method), ["singlescreen", "eyetracking", "hpp"]),
+              age_group = levels!(categorical(:age_group), ["3-6 mo", "6-9 mo", "9-12 mo", "12-15 mo"]));
+describe(mb1a)
+```
+Now fit a linear mixed-effects model
+```{julia;label=mixed}
+m1form = @formula log(looking_time) ~ trial_type * method +
+                   trial_type * trial_num +
+                   age_mo * trial_num +
+                   trial_type * age_mo * nae +
+                   (1 | subid_unique) +
+                   (1 | item) + 
+                   (1 | lab);
+m1 = fit(MixedModel, m1form, mb1a, REML=true)
+```
