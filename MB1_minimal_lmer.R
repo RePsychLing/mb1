@@ -33,3 +33,13 @@ mod_lmer <- lmer(log_lt ~ trial_type * method +
                  data = d_lmer)
 
 summary(mod_lmer)
+
+
+#original_mod_lmer <- lmer(log_lt ~ trial_type * method +
+#                   trial_type * trial_num +
+#                   age_mo * trial_num +
+#                   trial_type * age_mo * nae +
+#                   (trial_type * trial_num | subid_unique) +
+#                   (trial_type * age_mo | lab) + 
+#                   (method + age_mo * nae | item), 
+#                 data = d_lmer)
