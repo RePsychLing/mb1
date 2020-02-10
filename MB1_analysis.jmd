@@ -1,6 +1,7 @@
 Attach packages to be used
 ```{julia;label=packages}
 using CSV            # read and write .csv files
+using Gadfly
 using DataFrames
 using DataFramesMeta # dplyr-like operations
 using MixedModels
@@ -27,10 +28,16 @@ mb1a = @linq mb1 |>
               item = string.(:stimulus_num, :trial_type),
               age_mo = :age_mo .- mean(:age_mo),
               method = levels!(categorical(:method), ["singlescreen", "eyetracking", "hpp"]),
-              age_group = levels!(categorical(:age_group), ["3-6 mo", "6-9 mo", "9-12 mo", "12-15 mo"]));
+              age_group = levels!(categorical(:age_group), ["3-6 mo", "6-9 mo", "9-12 mo", "12-15 mo"])) |>
+    where(.!ismissing.(:looking_time));
 describe(mb1a)
 ```
-Now fit a linear mixed-effects model
+A histogrm of the `looking_time` shows the thresholding effect.
+```{julia;label=lookingtimeplot}
+plot(x=mb1a.looking_time, Geom.histogram())
+```
+
+Fit an initial linear mixed-effects model
 ```{julia;label=mixed}
 m1form = @formula log(looking_time) ~ trial_type * method +
                    trial_type * trial_num +
@@ -40,4 +47,7 @@ m1form = @formula log(looking_time) ~ trial_type * method +
                    (1 | item) + 
                    (1 | lab);
 m1 = fit(MixedModel, m1form, mb1a, REML=true)
+```
+```{julia;label=resids}
+plot(x=fitted(m1), y=residuals(m1), Geom.density2d())
 ```
