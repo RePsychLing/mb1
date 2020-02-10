@@ -21,7 +21,8 @@ The `gender` variable should be `F`, `M`, or `missing` but some values are misco
 ```{julia;label=gendervals}
 countmap(mb1.gender)
 ```
-Recoding the levels of gender and add the `item`
+Recode the levels of gender, add the `item` variable, center the `age_mo`, and relevel the `method` and `age_group` to match with the R data frame.
+Drop observations with a missing response (`looking_time`).
 ```{julia;label=genderrecode}
 mb1a = @linq mb1 |>
     transform(gender = recode(:gender, "0"=>missing, "MALE"=>"M", "FEMALE"=>"F"),
@@ -30,6 +31,7 @@ mb1a = @linq mb1 |>
               method = levels!(categorical(:method), ["singlescreen", "eyetracking", "hpp"]),
               age_group = levels!(categorical(:age_group), ["3-6 mo", "6-9 mo", "9-12 mo", "12-15 mo"])) |>
     where(.!ismissing.(:looking_time));
+disallowmissing!(mb1a, error=false);
 describe(mb1a)
 ```
 A histogrm of the `looking_time` shows the thresholding effect.
@@ -48,6 +50,7 @@ m1form = @formula log(looking_time) ~ trial_type * method +
                    (1 | lab);
 m1 = fit(MixedModel, m1form, mb1a, REML=true)
 ```
+The thresholding of the response produces some unusual patterns in the residuals versus fitted values.
 ```{julia;label=resids}
 plot(x=fitted(m1), y=residuals(m1), Geom.density2d())
 ```
