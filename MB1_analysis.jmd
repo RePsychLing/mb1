@@ -54,3 +54,74 @@ The thresholding of the response produces some unusual patterns in the residuals
 ```{julia;label=resids}
 plot(x=fitted(m1), y=residuals(m1), Geom.density2d())
 ```
+
+Fit the authors' intended maximal mixed-effects model. We switch to ML. 
+
+```{julia;label=mixed2}
+m2form = @formula log(looking_time) ~ trial_type * method +
+                   trial_type * trial_num +
+                   age_mo * trial_num +
+                   trial_type * age_mo * nae +
+                   (1 + trial_type * trial_num | subid_unique) +
+                   (1 + method + age_mo * nae | item) +
+                   (1 + trial_type * age_mo | lab);
+m2 = fit(MixedModel, m2form, mb1a, REML=false)
+
+m2.rePCA
+```
+According to `rePCA` there is overparameterization for each of the three random factors. 
+Let's go with zero-corr parameter LMM. 
+
+Questions
+
++ Does this work correctly for the combination of factor and covariate variables? 
++ Should I replace factors with corresponding columns of design matrix?
+
+```{julia;label=mixed3}
+m3form = @formula log(looking_time) ~ trial_type * method +
+                   trial_type * trial_num +
+                   age_mo * trial_num +
+                   trial_type * age_mo * nae +
+                   zerocorr(1 + trial_type * trial_num | subid_unique) +
+                   zerocorr(1 + method + age_mo * nae | item) +
+                   zerocorr(1 + trial_type * age_mo | lab);
+m3 = fit(MixedModel, m3form, mb1a, REML=false)
+
+m3.rePCA
+```
+
+Looks like quite a few VCs have very small values. Drop interaction terms and check LRT.
+
+
+```{julia;label=mixed3}
+m4form = @formula log(looking_time) ~ trial_type * method +
+                   trial_type * trial_num +
+                   age_mo * trial_num +
+                   trial_type * age_mo * nae +
+                   zerocorr(1 + trial_type | subid_unique) +
+                   zerocorr(1 + method + nae | item) +
+                   zerocorr(1 + age_mo | lab);
+m4 = fit(MixedModel, m4form, mb1a, REML=false)
+
+m4.rePCA
+```
+
+This looks ok. So let's expand with CPs again. 
+Intermediate LMM showed that CP is not supported for `Subject`.
+
+```{julia;label=mixed3}
+m5form = @formula log(looking_time) ~ trial_type * method +
+                   trial_type * trial_num +
+                   age_mo * trial_num +
+                   trial_type * age_mo * nae +
+                   zerocorr(1 + trial_type | subid_unique) +
+                   (1 + method + nae | item) +
+                   (1 + age_mo | lab);
+m5 = fit(MixedModel, m5form, mb1a, REML=false)
+
+m5.rePCA
+```
+
+That looks good and there are sizeable item-related correlation parameters. 
+
+
