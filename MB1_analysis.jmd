@@ -12,12 +12,10 @@ We are working with the *ManyBabies 1 - Infant-directed Speech Preference* datas
 https://github.com/manybabies/mb1-analysis-public
 
 
-
-
 Download and read the data. 
 ```{julia;label=download}
 mb1 = CSV.read(
-   "03_data_trial_main.csv",
+    download("https://raw.githubusercontent.com/manybabies/mb1-analysis-public/fa7e77c026a4dc0b0bb7e78d3bf3771c9bc2f7cb/processed_data/03_data_trial_main.csv"),
     missingstrings=["NA","N/A"],
     truestrings=["TRUE"],
     falsestrings=["FALSE"])
