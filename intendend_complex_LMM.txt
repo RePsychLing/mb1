@@ -1,0 +1,361 @@
+julia> mb1 = CSV.read(
+           download("https://raw.githubusercontent.com/manybabies/mb1-analysis-public/master/processed_data/03_data_trial_main.csv"),
+           missingstrings=["NA","N/A"],
+           truestrings=["TRUE"],
+           falsestrings=["FALSE"])
+37264×16 DataFrame. Omitted printing of 10 columns
+│ Row   │ lab            │ subid  │ subid_unique         │ trial_order │ trial_num │ trial_type │
+│       │ String         │ String │ String⍰              │ Int64⍰      │ Int64     │ String⍰    │
+├───────┼────────────────┼────────┼──────────────────────┼─────────────┼───────────┼────────────┤
+│ 1     │ babylabbrookes │ mb01   │ babylabbrookes:mb01  │ 1           │ 1         │ IDS        │
+│ 2     │ babylabbrookes │ mb02   │ babylabbrookes:mb02  │ 2           │ 1         │ ADS        │
+│ 3     │ babylabbrookes │ mb03   │ babylabbrookes:mb03  │ 3           │ 1         │ IDS        │
+│ 4     │ babylabbrookes │ mb04   │ babylabbrookes:mb04  │ 4           │ 1         │ ADS        │
+│ 5     │ babylabbrookes │ mb100  │ babylabbrookes:mb100 │ 2           │ 1         │ ADS        │
+⋮
+│ 37259 │ wsigoettingen  │ m411   │ wsigoettingen:m411   │ 3           │ 16        │ ADS        │
+│ 37260 │ wsigoettingen  │ m412   │ wsigoettingen:m412   │ 4           │ 16        │ IDS        │
+│ 37261 │ wsigoettingen  │ m413   │ missing              │ missing     │ 16        │ missing    │
+│ 37262 │ wsigoettingen  │ m414   │ wsigoettingen:m414   │ 2           │ 16        │ ADS        │
+│ 37263 │ wsigoettingen  │ m415   │ missing              │ missing     │ 16        │ missing    │
+│ 37264 │ wsigoettingen  │ m417   │ wsigoettingen:m417   │ 1           │ 16        │ IDS        │
+
+julia> describe(mb1)
+16×8 DataFrame. Omitted printing of 2 columns
+│ Row │ variable       │ mean      │ min                 │ median │ max                │ nunique │
+│     │ Symbol         │ Union…    │ Any                 │ Union… │ Any                │ Union…  │
+├─────┼────────────────┼───────────┼─────────────────────┼────────┼────────────────────┼─────────┤
+│ 1   │ lab            │           │ babylabbrookes      │        │ wsigoettingen      │ 67      │
+│ 2   │ subid          │           │ 1                   │        │ zu247              │ 1955    │
+│ 3   │ subid_unique   │           │ babylabbrookes:mb01 │        │ wsigoettingen:m417 │ 2329    │
+│ 4   │ trial_order    │ 2.47842   │ 1                   │ 2.0    │ 4                  │         │
+│ 5   │ trial_num      │ 8.5       │ 1                   │ 8.5    │ 16                 │         │
+⋮
+│ 11  │ age_group      │           │ 12-15 mo            │        │ 9-12 mo            │ 4       │
+│ 12  │ nae            │ 0.457707  │ 0                   │ 0.0    │ 1                  │         │
+│ 13  │ gender         │           │ 0                   │        │ MALE               │ 5       │
+│ 14  │ second_session │ 0.0184909 │ 0                   │ 0.0    │ 1                  │         │
+│ 15  │ looking_time   │ 7.80084   │ 2.0                 │ 6.23   │ 18.0               │         │
+│ 16  │ missing        │ 0.278258  │ 0                   │ 0.0    │ 1                  │         │
+
+julia> countmap(mb1.gender)
+Dict{Union{Missing, String},Int64} with 6 entries:
+  "M"      => 16708
+  "0"      => 16
+  missing  => 4383
+  "FEMALE" => 229
+  "F"      => 15666
+  "MALE"   => 262
+
+julia> mb1a = @linq mb1 |>
+           transform(gender = recode(:gender, "0"=>missing, "MALE"=>"M", "FEMALE"=>"F"),
+                     item = string.(:stimulus_num, :trial_type),
+                     age_mo = :age_mo .- mean(:age_mo),
+                     method = levels!(categorical(:method), ["singlescreen", "eyetracking", "hpp"]),
+                     age_group = levels!(categorical(:age_group), ["3-6 mo", "6-9 mo", "9-12 mo", "12-15 mo"])) |>
+           where(.!ismissing.(:looking_time));
+
+julia> disallowmissing!(mb1a, error=false);
+
+julia> describe(mb1a)
+17×8 DataFrame. Omitted printing of 2 columns
+│ Row │ variable       │ mean     │ min                 │ median │ max                │ nunique │
+│     │ Symbol         │ Union…   │ Any                 │ Union… │ Any                │ Union…  │
+├─────┼────────────────┼──────────┼─────────────────────┼────────┼────────────────────┼─────────┤
+│ 1   │ lab            │          │ babylabbrookes      │        │ wsigoettingen      │ 67      │
+│ 2   │ subid          │          │ 1                   │        │ zu247              │ 1936    │
+│ 3   │ subid_unique   │          │ babylabbrookes:mb01 │        │ wsigoettingen:m417 │ 2302    │
+│ 4   │ trial_order    │ 2.48113  │ 1                   │ 2.0    │ 4                  │         │
+│ 5   │ trial_num      │ 7.8174   │ 1                   │ 7.0    │ 16                 │         │
+⋮
+│ 12  │ nae            │ 0.459714 │ 0                   │ 0.0    │ 1                  │         │
+│ 13  │ gender         │          │ F                   │        │ M                  │ 2       │
+│ 14  │ second_session │ 0.012493 │ 0                   │ 0.0    │ 1                  │         │
+│ 15  │ looking_time   │ 7.80084  │ 2.0                 │ 6.23   │ 18.0               │         │
+│ 16  │ missing        │ 0.0      │ 0                   │ 0.0    │ 0                  │         │
+│ 17  │ item           │          │ 1ADS                │        │ 8IDS               │ 16      │
+
+julia> plot(x=mb1a.looking_time, Geom.histogram())
+
+# Reproduction of published LMM
+
+julia> m1form = @formula log(looking_time) ~ trial_type * method +
+                          trial_type * trial_num +
+                          age_mo * trial_num +
+                          trial_type * age_mo * nae +
+                          (1 | subid_unique) +
+                          (1 | item) + 
+                          (1 | lab);
+
+julia> m1 = fit(MixedModel, m1form, mb1a, REML=true)
+Linear mixed model fit by REML
+ :(log(looking_time)) ~ 1 + trial_type + method + trial_num + age_mo + nae + trial_type & method + trial_type & trial_num + age_mo & trial_num + trial_type & age_mo + trial_type & nae + age_mo & nae + trial_type & age_mo & nae + (1 | subid_unique) + (1 | item) + (1 | lab)
+ REML criterion at convergence: 43346.73059085285
+
+Variance components:
+                Column     Variance    Std.Dev.  
+subid_unique (Intercept)  0.072911220 0.270020777
+lab          (Intercept)  0.034756013 0.186429646
+item         (Intercept)  0.003313774 0.057565389
+Residual                  0.257245639 0.507193887
+ Number of obs: 26895; levels of grouping factors: 2302, 67, 16
+
+  Fixed-effects parameters:
+────────────────────────────────────────────────────────────────────────────────────
+                                           Estimate   Std.Error     z value  P(>|z|)
+────────────────────────────────────────────────────────────────────────────────────
+(Intercept)                             2.17749      0.0505755    43.0543     <1e-99
+trial_type: IDS                         0.099282     0.036048      2.75416    0.0059
+method: eyetracking                    -0.265154     0.0457677    -5.79348    <1e-8 
+method: hpp                            -0.0519927    0.0508692    -1.02209    0.3067
+trial_num                              -0.0377045    0.001513    -24.9203     <1e-99
+age_mo                                 -0.0353204    0.00444079   -7.95363    <1e-14
+nae                                    -0.0163462    0.0489224    -0.334125   0.7383
+trial_type: IDS & method: eyetracking  -0.00912279   0.0166455    -0.548063   0.5836
+trial_type: IDS & method: hpp           0.0341055    0.0150124     2.27182    0.0231
+trial_type: IDS & trial_num            -0.00289885   0.00212317   -1.36534    0.1721
+age_mo & trial_num                      0.000713798  0.00022736    3.13951    0.0017
+trial_type: IDS & age_mo                0.0123196    0.00286676    4.2974     <1e-4 
+trial_type: IDS & nae                   0.0392234    0.012724      3.08264    0.0021
+age_mo & nae                            0.00115973   0.00586571    0.197713   0.8433
+trial_type: IDS & age_mo & nae          0.00428713   0.00406433    1.05482    0.2915
+────────────────────────────────────────────────────────────────────────────────────
+
+julia> plot(x=fitted(m1), y=residuals(m1), Geom.density2d())
+
+# Intended complex LMM
+
+julia> m2form = @formula log(looking_time) ~ trial_type * method +
+                          trial_type * trial_num +
+                          age_mo * trial_num +
+                          trial_type * age_mo * nae +
+                          (1 + trial_type * trial_num | subid_unique) +
+                          (1 + method + age_mo * nae | item) +
+                          (1 + trial_type * age_mo | lab);
+
+julia> m2 = fit(MixedModel, m2form, mb1a, REML=false)
+Linear mixed model fit by maximum likelihood
+ :(log(looking_time)) ~ 1 + trial_type + method + trial_num + age_mo + nae + trial_type & method + trial_type & trial_num + age_mo & trial_num + trial_type & age_mo + trial_type & nae + age_mo & nae + trial_type & age_mo & nae + (1 + trial_type + trial_num + trial_type & trial_num | subid_unique) + (1 + method + age_mo + nae + age_mo & nae | item) + (1 + trial_type + age_mo + trial_type & age_mo | lab)
+     logLik        -2 logLik          AIC             BIC       
+ -2.14048212×10⁴  4.28096423×10⁴  4.29236423×10⁴   4.3391025×10⁴
+
+Variance components:
+                        Column              Variance      Std.Dev.     Corr.
+subid_unique (Intercept)                  0.108858994596 0.3299378648
+             trial_type: IDS              0.000587113842 0.0242304321  0.89
+             trial_num                    0.000637318674 0.0252451713 -0.66 -0.25
+             trial_type: IDS & trial_num  0.000071154589 0.0084353180  0.01 -0.05 -0.11
+lab          (Intercept)                  0.026210756742 0.1618973648
+             trial_type: IDS              0.000079380272 0.0089095607 -0.14
+             age_mo                       0.001101755932 0.0331927090 -0.21 -0.91
+             trial_type: IDS & age_mo     0.000067285042 0.0082027460  0.03 -0.11 -0.06
+item         (Intercept)                  0.002191276146 0.0468110686
+             method: eyetracking          0.000361603814 0.0190158832 -0.63
+             method: hpp                  0.000092781969 0.0096323397  0.64  0.09
+             age_mo                       0.000019694932 0.0044378972  0.82 -0.09  0.95
+             nae                          0.000692313428 0.0263118496  0.56  0.26  0.97  0.94
+             age_mo & nae                 0.000011957280 0.0034579301  0.17 -0.22 -0.41 -0.13 -0.27
+Residual                                  0.241424301808 0.4913494701
+ Number of obs: 26895; levels of grouping factors: 2302, 67, 16
+
+  Fixed-effects parameters:
+─────────────────────────────────────────────────────────────────────────────────────
+                                           Estimate    Std.Error     z value  P(>|z|)
+─────────────────────────────────────────────────────────────────────────────────────
+(Intercept)                             2.13572      0.0485884     43.9554     <1e-99
+trial_type: IDS                         0.0864117    0.0313295      2.75816    0.0058
+method: eyetracking                    -0.23642      0.048965      -4.82835    <1e-5 
+method: hpp                            -0.0175873    0.0489918     -0.358985   0.7196
+trial_num                              -0.0368898    0.0015166    -24.3241     <1e-99
+age_mo                                 -0.0307411    0.00797034    -3.85693    0.0001
+nae                                    -0.0309441    0.0464353     -0.666393   0.5052
+trial_type: IDS & method: eyetracking  -0.00358737   0.0201215     -0.178285   0.8585
+trial_type: IDS & method: hpp           0.0382883    0.0164509      2.32743    0.0199
+trial_type: IDS & trial_num            -0.00222692   0.00195762    -1.13756    0.2553
+age_mo & trial_num                      0.000704412  0.000298976    2.35608    0.0185
+trial_type: IDS & age_mo                0.0133964    0.00403431     3.32061    0.0009
+trial_type: IDS & nae                   0.0367183    0.0188651      1.94637    0.0516
+age_mo & nae                           -0.00204363   0.0111912     -0.182611   0.8551
+trial_type: IDS & age_mo & nae          0.00383717   0.00511415     0.750304   0.4531
+─────────────────────────────────────────────────────────────────────────────────────
+
+
+julia> m2.rePCA
+(subid_unique = [0.9949999959659831, 0.9993668589551783, 1.0, 1.0], 
+ lab = [0.9564879783824718, 0.9974127248338955, 0.9999244006511852, 1.0], 
+ item = [0.7793763015792055, 0.9910454494986544, 0.9999837941222145, 0.999995982482575, 1.0, 1.0])
+ 
+ # zerocorr of intended complex LMM
+
+julia> m3form = @formula log(looking_time) ~ trial_type * method +
+                          trial_type * trial_num +
+                                             age_mo * trial_num +
+                                                                trial_type * age_mo * nae +
+                                                                                   zerocorr(1 + trial_type 
+* trial_num | subid_unique) +
+                                                                                                      zeroc
+orr(1 + method + age_mo * nae | item) +
+                                                                                                           
+              zerocorr(1 + trial_type * age_mo | lab);
+
+julia> m3 = fit(MixedModel, m3form, mb1a, REML=false)
+Linear mixed model fit by maximum likelihood
+ :(log(looking_time)) ~ 1 + trial_type + method + trial_num + age_mo + nae + trial_type & method + trial_type & trial_num + age_mo & trial_num + trial_type & age_mo + trial_type & nae + age_mo & nae + trial_type & age_mo & nae + MixedModels.ZeroCorr((1 + trial_type + trial_num + trial_type & trial_num | subid_unique)) + MixedModels.ZeroCorr((1 + method + age_mo + nae + age_mo & nae | item)) + MixedModels.ZeroCorr((1 + trial_type + age_mo + trial_type & age_mo | lab))
+     logLik        -2 logLik          AIC             BIC       
+ -2.15228358×10⁴  4.30456717×10⁴  4.31056717×10⁴  4.33516626×10⁴
+
+Variance components:
+                        Column              Variance      Std.Dev.     Corr.
+subid_unique (Intercept)                  0.062195552468 0.2493903616
+             trial_type: IDS              0.001274467681 0.0356996874   .  
+             trial_num                    0.000190582246 0.0138051529   .     .  
+             trial_type: IDS & trial_num  0.000052016909 0.0072122749   .     .     .  
+lab          (Intercept)                  0.028163669707 0.1678203495
+             trial_type: IDS              0.000000000000 0.0000000000   .  
+             age_mo                       0.001122813252 0.0335084057   .     .  
+             trial_type: IDS & age_mo     0.000069056197 0.0083100058   .     .     .  
+item         (Intercept)                  0.002275750219 0.0477048239
+             method: eyetracking          0.000199183476 0.0141132376   .  
+             method: hpp                  0.000186055845 0.0136402289   .     .  
+             age_mo                       0.000013387778 0.0036589313   .     .     .  
+             nae                          0.000775501862 0.0278478341   .     .     .     .  
+             age_mo & nae                 0.000008345200 0.0028888059   .     .     .     .     .  
+Residual                                  0.249270229096 0.4992696958
+ Number of obs: 26895; levels of grouping factors: 2302, 67, 16
+
+  Fixed-effects parameters:
+─────────────────────────────────────────────────────────────────────────────────────
+                                           Estimate    Std.Error     z value  P(>|z|)
+─────────────────────────────────────────────────────────────────────────────────────
+(Intercept)                             2.1446       0.0500641     42.8371     <1e-99
+trial_type: IDS                         0.0993034    0.0322353      3.08058    0.0021
+method: eyetracking                    -0.24944      0.0508895     -4.9016     <1e-6 
+method: hpp                            -0.017024     0.0512421     -0.332227   0.7397
+trial_num                              -0.0377292    0.00151085   -24.9721     <1e-99
+age_mo                                 -0.0307859    0.00798363    -3.85613    0.0001
+nae                                    -0.0336743    0.0481559     -0.699277   0.4844
+trial_type: IDS & method: eyetracking  -0.00839814   0.0191823     -0.437807   0.6615
+trial_type: IDS & method: hpp           0.0357675    0.0172195      2.07715    0.0378
+trial_type: IDS & trial_num            -0.00315856   0.0020804     -1.51824    0.1290
+age_mo & trial_num                      0.000751839  0.000286159    2.62735    0.0086
+trial_type: IDS & age_mo                0.0129765    0.00386898     3.35398    0.0008
+trial_type: IDS & nae                   0.036714     0.0193902      1.89343    0.0583
+age_mo & nae                           -0.00394752   0.0114203     -0.345658   0.7296
+trial_type: IDS & age_mo & nae          0.00387278   0.00506911     0.763996   0.4449
+─────────────────────────────────────────────────────────────────────────────────────
+
+julia> m3.rePCA
+(subid_unique = [0.9761889111998406, 0.9961922903540935, 0.9991835697667928, 1.0],
+ lab = [0.9593988227293436, 0.9976475922832837, 1.0, 1.0], 
+ item = [0.658068988185389, 0.88231755544314, 0.9399145918661254, 0.9937155674515242, 0.9975868542185253, 1.0])
+
+# First attempt at pruning LMM
+
+julia> m4form = @formula log(looking_time) ~ trial_type * method +
+                          trial_type * trial_num +
+                          age_mo * trial_num +
+                          trial_type * age_mo * nae +
+                          zerocorr(1 + trial_type | subid_unique) +
+                          zerocorr(1 + method + nae | item) +
+                          zerocorr(1 + age_mo | lab);
+
+julia> m4 = fit(MixedModel, m4form, mb1a, REML=false)
+Linear mixed model fit by maximum likelihood
+ :(log(looking_time)) ~ 1 + trial_type + method + trial_num + age_mo + nae + trial_type & method + trial_type & trial_num + age_mo & trial_num + trial_type & age_mo + trial_type & nae + age_mo & nae + trial_type & age_mo & nae + MixedModels.ZeroCorr((1 + trial_type | subid_unique)) + MixedModels.ZeroCorr((1 + method + nae | item)) + MixedModels.ZeroCorr((1 + age_mo | lab))
+     logLik        -2 logLik          AIC             BIC       
+ -2.15779584×10⁴  4.31559168×10⁴  4.32039168×10⁴  4.34007095×10⁴
+
+Variance components:
+                    Column          Variance     Std.Dev.    Corr.
+subid_unique (Intercept)          0.06705839831 0.258956364
+             trial_type: IDS      0.00370921138 0.060903295   .  
+lab          (Intercept)          0.02687150960 0.163925317
+             age_mo               0.00112031123 0.033471051   .  
+item         (Intercept)          0.00228969974 0.047850807
+             method: eyetracking  0.00035755119 0.018909024   .  
+             method: hpp          0.00022581048 0.015026992   .     .  
+             nae                  0.00079168028 0.028136814   .     .     .  
+Residual                          0.25587771091 0.505843564
+ Number of obs: 26895; levels of grouping factors: 2302, 67, 16
+
+  Fixed-effects parameters:
+────────────────────────────────────────────────────────────────────────────────────
+                                          Estimate    Std.Error     z value  P(>|z|)
+────────────────────────────────────────────────────────────────────────────────────
+(Intercept)                             2.14699     0.0492998     43.5497     <1e-99
+trial_type: IDS                         0.100409    0.0322554      3.11292    0.0019
+method: eyetracking                    -0.248935    0.0500989     -4.96887    <1e-6 
+method: hpp                            -0.0217342   0.0501658     -0.433246   0.6648
+trial_num                              -0.0373707   0.00149232   -25.0421     <1e-99
+age_mo                                 -0.030827    0.00775024    -3.97755    <1e-4 
+nae                                    -0.0356434   0.0471928     -0.755272   0.4501
+trial_type: IDS & method: eyetracking  -0.00841878  0.0194927     -0.431895   0.6658
+trial_type: IDS & method: hpp           0.0341686   0.0170949      1.99877    0.0456
+trial_type: IDS & trial_num            -0.00310536  0.00209482    -1.48239    0.1382
+age_mo & trial_num                      0.00077597  0.000227538    3.41028    0.0006
+trial_type: IDS & age_mo                0.0122974   0.00292604     4.20275    <1e-4 
+trial_type: IDS & nae                   0.0386696   0.0191854      2.01558    0.0438
+age_mo & nae                           -0.00389197  0.0112756     -0.345168   0.7300
+trial_type: IDS & age_mo & nae          0.00420595  0.00414908     1.01371    0.3107
+────────────────────────────────────────────────────────────────────────────────────
+
+julia> m4.rePCA
+(subid_unique = [0.9475860298837476, 1.0], 
+ lab = [0.9599771933536926, 1.0], 
+ item = [0.6247915786922139, 0.8408177942911322, 0.9383829762832364, 1.0])
+
+
+# Expanding the pruned LMM with CPs
+
+julia> m5form = @formula log(looking_time) ~ trial_type * method +
+                          trial_type * trial_num +
+                          age_mo * trial_num +
+                          trial_type * age_mo * nae +
+                          zerocorr(1 + trial_type | subid_unique) +
+                          (1 + method + nae | item) +
+                          (1 + age_mo | lab);
+
+julia> m5 = fit(MixedModel, m5form, mb1a, REML=false)
+Linear mixed model fit by maximum likelihood
+ :(log(looking_time)) ~ 1 + trial_type + method + trial_num + age_mo + nae + trial_type & method + trial_type & trial_num + age_mo & trial_num + trial_type & age_mo + trial_type & nae + age_mo & nae + trial_type & age_mo & nae + MixedModels.ZeroCorr((1 + trial_type | subid_unique)) + (1 + method + nae | item) + (1 + age_mo | lab)
+     logLik        -2 logLik          AIC             BIC       
+ -2.15731287×10⁴  4.31462574×10⁴  4.32082574×10⁴  4.34624479×10⁴
+
+Variance components:
+                    Column          Variance     Std.Dev.    Corr.
+subid_unique (Intercept)          0.06714616528 0.259125771
+             trial_type: IDS      0.00368980292 0.060743748   .  
+lab          (Intercept)          0.02664990251 0.163247979
+             age_mo               0.00108784019 0.032982422 -0.22
+item         (Intercept)          0.00178368755 0.042233725
+             method: eyetracking  0.00040903145 0.020224526 -0.30
+             method: hpp          0.00021330849 0.014605084  0.57 -0.28
+             nae                  0.00066726629 0.025831498  0.61  0.27  0.81
+Residual                          0.25585546599 0.505821575
+ Number of obs: 26895; levels of grouping factors: 2302, 67, 16
+
+  Fixed-effects parameters:
+─────────────────────────────────────────────────────────────────────────────────────
+                                           Estimate    Std.Error     z value  P(>|z|)
+─────────────────────────────────────────────────────────────────────────────────────
+(Intercept)                             2.13454      0.0482947     44.1983     <1e-99
+trial_type: IDS                         0.0980959    0.0299924      3.27069    0.0011
+method: eyetracking                    -0.232704     0.049406      -4.71002    <1e-5 
+method: hpp                            -0.0179897    0.0495812     -0.362833   0.7167
+trial_num                              -0.0370242    0.00146761   -25.2276     <1e-99
+age_mo                                 -0.0304479    0.00766507    -3.97229    <1e-4 
+nae                                    -0.0317816    0.0467808     -0.679373   0.4969
+trial_type: IDS & method: eyetracking  -0.00810969   0.0198181     -0.409206   0.6824
+trial_type: IDS & method: hpp           0.0341898    0.0169939      2.01189    0.0442
+trial_type: IDS & trial_num            -0.00283246   0.00205764    -1.37656    0.1686
+age_mo & trial_num                      0.000765557  0.000227418    3.3663     0.0008
+trial_type: IDS & age_mo                0.0123021    0.00292534     4.20537    <1e-4 
+trial_type: IDS & nae                   0.0384552    0.0183362      2.09723    0.0360
+age_mo & nae                           -0.00307072   0.0111339     -0.275798   0.7827
+trial_type: IDS & age_mo & nae          0.00418237   0.0041481      1.00826    0.3133
+─────────────────────────────────────────────────────────────────────────────────────
+
+julia> m5.rePCA
+(subid_unique = [0.9479106023007151, 1.0], 
+ lab = [0.9627384818465811, 1.0], 
+ item = [0.7201740301335628, 0.921645228620649, 1.0, 1.0])
