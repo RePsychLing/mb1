@@ -1,3 +1,5 @@
+### Setup
+
 Attach packages to be used
 ```{julia;label=packages}
 using CSV            # read and write .csv files
@@ -8,11 +10,14 @@ using MixedModels
 using StatsBase      # basic statistics functions
 ```
 
+### Data preprocessing
+
 We are working with the *ManyBabies 1 - Infant-directed Speech Preference* dataset that has been published at:
 https://github.com/manybabies/mb1-analysis-public
 
 
-Download and read the data. 
+Download and read the data, using CSV. 
+Inspect the contents. 
 ```{julia;label=download}
 mb1 = CSV.read(
     download("https://raw.githubusercontent.com/manybabies/mb1-analysis-public/fa7e77c026a4dc0b0bb7e78d3bf3771c9bc2f7cb/processed_data/03_data_trial_main.csv"),
@@ -27,6 +32,7 @@ The `gender` variable should be `F`, `M`, or `missing` but some values are misco
 countmap(mb1.gender)
 ```
 
+So first let's get the data in shape. In Julia, there is DataFramesMeta 
 Recode the levels of gender, add the `item` variable, center the `age_mo`, and relevel the `method` and `age_group` to match with the R data frame.
 Add log-transformed looking time `log_lt` for visualization. 
 Drop observations with a missing response (`looking_time`).
@@ -44,15 +50,22 @@ disallowmissing!(mb1a, error=false);
 describe(mb1a)
 ```
 A histogrm of the `looking_time` shows the thresholding effect.
+Trials with looking times shorter than 2s were excluded as uninformative, and maximal trial duration was 18s. 
 ```{julia;label=lookingtimeplot}
-plot(x=mb1a.looking_time, Geom.histogram)
+plot(x=mb1a.looking_time, color=mb1a.trial_type, Geom.histogram)
 ```
 
-The data are being log transformed in the analysis, so to be sure we also visualize that.
+We can also split the plot by our key comparison to inspect how the censoring affects the DV in the two conditions.
+````{julia;label=lookingtimeplot_bycondition}
+plot(x=mb1a.looking_time, xgroup=mb1a.trial_type, Geom.subplot_grid(Geom.histogram))
+```
 
+The data are being log transformed in the analysis, so we also visualize that.
 ```{julia;label=loglookingtimeplot}
 plot(x=mb1a.log_lt, Geom.histogram)
 ```
+
+### Model Fitting
 
 Fit an initial linear mixed-effects model
 ```{julia;label=mixed}
@@ -68,7 +81,7 @@ m1 = fit(MixedModel, m1form, mb1a, REML=true)
 
 The thresholding of the response produces some unusual patterns in the residuals versus fitted values.
 ```{julia;label=resids}
-plot(x=fitted(m1), y=residuals(m1), Geom.density2d())
+plot(x=fitted(m1), y=residuals(m1), Geom.density2d)
 ```
 
 Fit the authors' intended maximal mixed-effects model. We switch from REML to ML. 
@@ -81,16 +94,16 @@ m2form = @formula log(looking_time) ~ trial_type * method +
                    (1 + trial_type * age_mo | lab) +
                    (1 + method + age_mo * nae | item);
 m2 = fit(MixedModel, m2form, mb1a, REML=false)
+```
 
+`rePCA` is analogous to rePCA() in R's lme4, which runs a Principal Component Analysis on the random effects matrix estimates to be able to detect overfitting. In MixedModels, it is a property of the fitted model. 
+```{julia;label=m2rePCA}
 m2.rePCA
 ```
 According to `rePCA` there is overparameterization for each of the three random factors. 
-Let's go with zero-corr parameter LMM. 
+Let's go with zerocorr parameter linear mixed models. 
 
-Questions
 
-+ Does this work correctly for the combination of factor and covariate variables? 
-+ Should I replace factors with corresponding columns of design matrix?
 
 ```{julia;label=mixed3}
 m3form = @formula log(looking_time) ~ trial_type * method +
@@ -105,8 +118,7 @@ m3 = fit(MixedModel, m3form, mb1a, REML=false)
 m3.rePCA
 ```
 
-Looks like quite a few VCs have very small values. Drop interaction terms and check LRT.
-
+Looks like quite a few variance components have very small values. Drop interaction terms and check LRT.
 
 ```{julia;label=mixed3}
 m4form = @formula log(looking_time) ~ trial_type * method +
@@ -139,4 +151,83 @@ m5.rePCA
 
 That looks good and there are sizeable item-related correlation parameters. 
 
+### What happens if the random effects are not proberly nested?
 
+We have labs and participants within labs, so if we naively use those variables, what would happen?
+
+Note that we are not fitting the model (it takes a very long time, an indicator something is going on), we instead construct and evaluate it. 
+
+```{julia;label=nesting1}
+m2form_nesting = @formula log(looking_time) ~ trial_type * method +
+                   trial_type * trial_num +
+                   age_mo * trial_num +
+                   trial_type * age_mo * nae +
+                   (1 + trial_type * trial_num | subid) +
+                   (1 + trial_type * age_mo | lab) +
+                   (1 + method + age_mo * nae | item);
+#m2n = fit(MixedModel, m2form_nesting, mb1a, REML=false) # This would fit the model
+m2n = LinearMixedModel(m2form_nesting, mb1a, REML=false) # Construct the model 
+#fit!(m2_n) # Fit the model we constructed 
+describeblocks(m2n)
+```
+
+Let's compare that to the blocks in the original model.
+
+```{julia;label=blocks_original}
+describeblocks(m2)
+```
+
+It turns out there are way less unique observations now, which is of course a problem. 
+
+
+
+### Optional: Dealing with censored data
+
+As we saw in the initial histograms, there are a number of observations that fall on the maximum trial length, so for robustness checks we see what happens if we discard those observations (i.e. all observations where looking time is 18s)
+
+```{julia;label=censored_data_remove}
+#How many observations are affected exactly?
+sum(mb1a.looking_time.==18)
+
+#remove 18s observations
+mb1b = @linq mb1a |>
+    where(:looking_time.<18);
+describe(mb1b)
+```
+
+Let's inspect the data again.
+
+```{julia;label=lookingtimeplot_remove18}
+plot(x=mb1b.looking_time, color=mb1b.trial_type, Geom.histogram)
+```
+
+Now we fit the original and final models again, do our conclusions change or are they robust to excluding those observations?
+
+```{julia;label=mixed_censored}
+m1bform = @formula log(looking_time) ~ trial_type * method +
+                   trial_type * trial_num +
+                   age_mo * trial_num +
+                   trial_type * age_mo * nae +
+                   (1 | subid_unique) +
+                   (1 | lab) + 
+                   (1 | item);
+m1b = fit(MixedModel, m1bform, mb1b, REML=true)
+```
+
+```{julia;label=mixed5b}
+m5formb = @formula log(looking_time) ~ trial_type * method +
+                   trial_type * trial_num +
+                   age_mo * trial_num +
+                   trial_type * age_mo * nae +
+                   zerocorr(1 + trial_type | subid_unique) +
+                   (1 + method + nae | item) +
+                   (1 + age_mo | lab);
+m5b = fit(MixedModel, m5formb, mb1b, REML=false)
+```
+
+It turns out our conclusions are rather robust to excluding the ceiling data. 
+
+Next, we can check what happens when we do not exclude too short trials. 
+For that, we need an unfiltered dataset and re-clean it "by hand"
+
+#TODO

@@ -8,7 +8,7 @@ library(tidyverse)
 
 
 # Read in data and recode method
-d <- read_csv("03_data_trial_main.csv", 
+d <- read_csv("https://raw.githubusercontent.com/manybabies/mb1-analysis-public/fa7e77c026a4dc0b0bb7e78d3bf3771c9bc2f7cb/processed_data/03_data_trial_main.csv", 
               na = c("NA", "N/A")) %>%
   mutate(method = case_when(
     method == "singlescreen" ~ "Central fixation",
@@ -57,3 +57,6 @@ summary(mod_lmer)
 #                   (trial_type * age_mo | lab) + 
 #                   (method + age_mo * nae | item), 
 #                 data = d_lmer)
+
+
+
