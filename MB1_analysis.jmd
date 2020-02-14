@@ -8,6 +8,7 @@ using DataFrames
 using DataFramesMeta # dplyr-like operations
 using MixedModels
 using StatsBase      # basic statistics functions
+using RCall
 ```
 
 ### Data preprocessing
@@ -227,7 +228,110 @@ m5b = fit(MixedModel, m5formb, mb1b, REML=false)
 
 It turns out our conclusions are rather robust to excluding the ceiling data. 
 
-Next, we can check what happens when we do not exclude too short trials. 
-For that, we need an unfiltered dataset and re-clean it "by hand"
 
-#TODO
+Next, we can check what happens when we do not exclude too short trials. 
+For that, we need an unfiltered dataset and re-clean it "by hand" (this is handled by the exclusions-markdowns in the ManyBabies1 repository). 
+
+```{julia;label=download_raw}
+mb1_raw = CSV.read(
+    download("https://raw.githubusercontent.com/manybabies/mb1-analysis-public/fa7e77c026a4dc0b0bb7e78d3bf3771c9bc2f7cb/processed_data/02_validated_output.csv"),
+    missingstrings=["NA","N/A"],
+    truestrings=["TRUE"],
+    falsestrings=["FALSE"])
+describe(mb1_raw)
+```
+This datastructure is much wider and hasn't been cleaned yet. These are the 81 columns in there. Let's take a look. 
+
+```{julia;label=names}
+show(names(mb1_raw))
+```
+
+In this datastructure, what has to be removed have already been flagged, and we follow the exclusion procedure now.
+```{julia;label=exclude}
+#first remove all missing data so the next step with logical operations is not thrown off
+
+mb1_alltrials = @linq mb1_raw |>
+    where( 
+        .!ismissing.(:age_mo),
+        .!ismissing.(:looking_time), 
+        .!ismissing.(:trial_type)
+    );
+
+mb1_alltrials = @linq mb1_alltrials |>
+    where(
+        :pilot .== false, #no pilot data
+        :age_mo .>= 3, #no participants outside the pre-specified age range
+        :age_mo .<= 15,
+        :monolingual .== true, #only monolingual participants
+        :full_term .== true, #no preterm 
+        :td .== true, #no known developmental delays
+        :session_error .== false, #no participants where something went wrong during the session_error
+        :trial_error .== false, #no trials where something went wrong
+        :trial_num .> 0, #no training trials (out of order here)
+        :trial_type .!= "TRAIN"
+    );
+
+# only keep rows we plan to use (this also avoids issues with empty fields / missing data down the line)
+mb1_alltrials = select!(mb1_alltrials, [:lab, :subid, :subid_unique, :trial_order, :trial_num, :trial_type, :stimulus_num, :method, :age_days, :age_mo, :age_group, :nae, :gender, :second_session, :looking_time]);
+
+```
+
+One exclusion criterion is whether infants contributed at least one usable trial per condition, for simplicity I am copying over the R code 
+
+But first we need to drop all missing values, because they are handled differently in the languages
+
+```{julia;label=pass_data}
+dropmissing(mb1_alltrials);
+
+@rput mb1_alltrials;
+
+```
+#Now we've passed the data to R and can maniputale it there. While we are at it, we also reconstruct the item variable.
+
+```{R;label=usable_pairs}
+library(dplyr)
+usable_pairs <- mb1_alltrials %>%
+  group_by(subid_unique, stimulus_num) %>%
+  summarise(n_usable = sum(!is.na(looking_time))) %>%
+  summarise(usable_pair = any(n_usable == 2, na.rm=TRUE)) %>%
+  mutate(usable_pair = ifelse(is.na(usable_pair), FALSE, usable_pair)) %>%
+  ungroup()
+
+mb1_alltrials <- mb1_alltrials %>% 
+  left_join(usable_pairs, by = "subid_unique") %>%
+  filter(usable_pair) %>%
+  mutate(item = paste0(stimulus_num, trial_type))
+
+```
+
+Now return the data to julia
+
+```{julia;label=getdata}
+@rget mb1_alltrials;
+```
+
+Let's inspect the data
+```{julia;label=plotallLT}
+plot(x=mb1_alltrials.looking_time, xgroup=mb1_alltrials.trial_type, Geom.subplot_grid(Geom.histogram))
+```
+
+We need to remove 0 looking time trials, i.e. trials without any data. This is both conceptually appropriate and saves our log transform of the looking times. We also again remove the right-censored data (i.e. looking times of exact 18s)
+
+```{julia;label=zerolookingtimes}
+mb1_alltrials = @linq mb1_alltrials |>
+    where(
+        :looking_time .> 0, 
+        :looking_time .< 18
+        );
+```
+
+Let's inspect the data
+```{julia;label=plotallLT}
+plot(x=mb1_alltrials.looking_time, xgroup=mb1_alltrials.trial_type, Geom.subplot_grid(Geom.histogram))
+```
+
+Now we can finally fit the model again. We use the same formula as above, so no need to specify it again
+
+```{julia;label=mixed_censored}
+m1_censored = fit(MixedModel, m1bform, mb1_alltrials, REML=true)
+```
