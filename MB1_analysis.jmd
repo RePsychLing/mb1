@@ -3,12 +3,12 @@
 Attach packages to be used
 ```{julia;label=packages}
 using CSV            # read and write .csv files
-using Gadfly
-using DataFrames
+using Gadfly         # plotting
+using DataFrames     
 using DataFramesMeta # dplyr-like operations
 using MixedModels
 using StatsBase      # basic statistics functions
-using RCall
+using RCall          # Call R from Julia
 ```
 
 ### Data preprocessing
@@ -33,8 +33,9 @@ The `gender` variable should be `F`, `M`, or `missing` but some values are misco
 countmap(mb1.gender)
 ```
 
-So first let's get the data in shape. In Julia, there is DataFramesMeta 
-Recode the levels of gender, add the `item` variable, center the `age_mo`, and relevel the `method` and `age_group` to match with the R data frame.
+So first let's get the data in shape. In Julia, there is DataFramesMeta for this purpose. 
+
+Recode the levels of `gender`, add the `item` variable, center the `age_mo`, and relevel the `method` and `age_group` to match with the R data frame.
 Add log-transformed looking time `log_lt` for visualization. 
 Drop observations with a missing response (`looking_time`).
 
@@ -53,7 +54,7 @@ describe(mb1a)
 A histogrm of the `looking_time` shows the thresholding effect.
 Trials with looking times shorter than 2s were excluded as uninformative, and maximal trial duration was 18s. 
 ```{julia;label=lookingtimeplot}
-plot(x=mb1a.looking_time, color=mb1a.trial_type, Geom.histogram)
+plot(x=mb1a.looking_time, Geom.histogram)
 ```
 
 We can also split the plot by our key comparison to inspect how the censoring affects the DV in the two conditions.
@@ -61,14 +62,15 @@ We can also split the plot by our key comparison to inspect how the censoring af
 plot(x=mb1a.looking_time, xgroup=mb1a.trial_type, Geom.subplot_grid(Geom.histogram))
 ```
 
-The data are being log transformed in the analysis, so we also visualize that.
+The data are being log transformed in the analysis, so we can also visualize that.
 ```{julia;label=loglookingtimeplot}
 plot(x=mb1a.log_lt, Geom.histogram)
 ```
 
-### Model Fitting
+### Model Fitting 
 
-Fit an initial linear mixed-effects model
+Fit the linear mixed-effects model from the paper.
+
 ```{julia;label=mixed}
 m1form = @formula log(looking_time) ~ trial_type * method +
                    trial_type * trial_num +
@@ -85,7 +87,10 @@ The thresholding of the response produces some unusual patterns in the residuals
 plot(x=fitted(m1), y=residuals(m1), Geom.density2d)
 ```
 
-Fit the authors' intended maximal mixed-effects model. We switch from REML to ML. 
+#### Intended maximal model 
+
+Fit the authors' intended maximal mixed-effects model. lme4 in R did initally not converge and now throws singularity warnings for this model. 
+We switch from REML to ML. 
 ```{julia;label=mixed2}
 m2form = @formula log(looking_time) ~ trial_type * method +
                    trial_type * trial_num +
@@ -135,7 +140,7 @@ m4.rePCA
 ```
 
 This looks ok. So let's expand with CPs again. 
-Intermediate LMM showed that CP is not supported for `Subject`.
+Intermediate linear mixed models showed that CP is not supported for `Subject`.
 
 ```{julia;label=mixed3}
 m5form = @formula log(looking_time) ~ trial_type * method +
@@ -182,7 +187,7 @@ It turns out there are way less unique observations now, which is of course a pr
 
 
 
-### Optional: Dealing with censored data
+### Dealing with censored data
 
 As we saw in the initial histograms, there are a number of observations that fall on the maximum trial length, so for robustness checks we see what happens if we discard those observations (i.e. all observations where looking time is 18s)
 
@@ -199,31 +204,15 @@ describe(mb1b)
 Let's inspect the data again.
 
 ```{julia;label=lookingtimeplot_remove18}
-plot(x=mb1b.looking_time, color=mb1b.trial_type, Geom.histogram)
+plot(x=mb1b.looking_time, Geom.histogram)
 ```
 
 Now we fit the original and final models again, do our conclusions change or are they robust to excluding those observations?
 
 ```{julia;label=mixed_censored}
-m1bform = @formula log(looking_time) ~ trial_type * method +
-                   trial_type * trial_num +
-                   age_mo * trial_num +
-                   trial_type * age_mo * nae +
-                   (1 | subid_unique) +
-                   (1 | lab) + 
-                   (1 | item);
-m1b = fit(MixedModel, m1bform, mb1b, REML=true)
-```
+m1b = fit(MixedModel, m1form, mb1b, REML=true)
 
-```{julia;label=mixed5b}
-m5formb = @formula log(looking_time) ~ trial_type * method +
-                   trial_type * trial_num +
-                   age_mo * trial_num +
-                   trial_type * age_mo * nae +
-                   zerocorr(1 + trial_type | subid_unique) +
-                   (1 + method + nae | item) +
-                   (1 + age_mo | lab);
-m5b = fit(MixedModel, m5formb, mb1b, REML=false)
+m5b = fit(MixedModel, m5form, mb1b, REML=false)
 ```
 
 It turns out our conclusions are rather robust to excluding the ceiling data. 
@@ -240,7 +229,7 @@ mb1_raw = CSV.read(
     falsestrings=["FALSE"])
 describe(mb1_raw)
 ```
-This datastructure is much wider and hasn't been cleaned yet. These are the 81 columns in there. Let's take a look. 
+This datastructure is much wider and hasn't been cleaned yet. There are the 81 columns. Let's take a look. 
 
 ```{julia;label=names}
 show(names(mb1_raw))
@@ -286,7 +275,7 @@ dropmissing(mb1_alltrials);
 @rput mb1_alltrials;
 
 ```
-#Now we've passed the data to R and can maniputale it there. While we are at it, we also reconstruct the item variable.
+Now we've passed the data to R and can manipulate it there. While we are at it, we also reconstruct the item variable.
 
 ```{R;label=usable_pairs}
 library(dplyr)
