@@ -9,6 +9,9 @@ using DataFramesMeta # dplyr-like operations
 using MixedModels
 using StatsBase      # basic statistics functions
 using RCall          # Call R from Julia
+using JellyMe4       # in development; pass models between Julia and R, get via pkg> add https://github.com/palday/JellyMe4.jl
+R"library(lme4)"
+R"library(dplyr)"
 ```
 
 ### Data preprocessing
@@ -172,7 +175,7 @@ m2form_nesting = @formula log(looking_time) ~ trial_type * method +
                    (1 + trial_type * age_mo | lab) +
                    (1 + method + age_mo * nae | item);
 #m2n = fit(MixedModel, m2form_nesting, mb1a, REML=false) # This would fit the model
-m2n = LinearMixedModel(m2form_nesting, mb1a, REML=false) # Construct the model 
+m2n = LinearMixedModel(m2form_nesting, mb1a) # Construct the model 
 #fit!(m2_n) # Fit the model we constructed 
 describeblocks(m2n)
 ```
@@ -263,6 +266,16 @@ mb1_alltrials = @linq mb1_alltrials |>
 # only keep rows we plan to use (this also avoids issues with empty fields / missing data down the line)
 mb1_alltrials = select!(mb1_alltrials, [:lab, :subid, :subid_unique, :trial_order, :trial_num, :trial_type, :stimulus_num, :method, :age_days, :age_mo, :age_group, :nae, :gender, :second_session, :looking_time]);
 
+# apply the same conversions as before for comparability
+mb1_alltrials = @linq mb1_alltrials |>
+    transform(gender = recode(:gender, "0"=>missing, "MALE"=>"M", "FEMALE"=>"F"),
+              item = string.(:stimulus_num, :trial_type),
+              age_mo = :age_mo .- mean(:age_mo),
+              log_lt = log.(:looking_time),
+              method = levels!(categorical(:method), ["singlescreen", "eyetracking", "hpp"]),
+              age_group = levels!(categorical(:age_group), ["3-6 mo", "6-9 mo", "9-12 mo", "12-15 mo"])) |>
+    where(.!ismissing.(:looking_time));
+
 ```
 
 One exclusion criterion is whether infants contributed at least one usable trial per condition, for simplicity I am copying over the R code 
@@ -278,7 +291,6 @@ dropmissing(mb1_alltrials);
 Now we've passed the data to R and can manipulate it there. While we are at it, we also reconstruct the item variable.
 
 ```{R;label=usable_pairs}
-library(dplyr)
 usable_pairs <- mb1_alltrials %>%
   group_by(subid_unique, stimulus_num) %>%
   summarise(n_usable = sum(!is.na(looking_time))) %>%
@@ -288,8 +300,7 @@ usable_pairs <- mb1_alltrials %>%
 
 mb1_alltrials <- mb1_alltrials %>% 
   left_join(usable_pairs, by = "subid_unique") %>%
-  filter(usable_pair) %>%
-  mutate(item = paste0(stimulus_num, trial_type))
+  filter(usable_pair) 
 
 ```
 
@@ -314,13 +325,20 @@ mb1_alltrials = @linq mb1_alltrials |>
         );
 ```
 
-Let's inspect the data
+Let's inspect the data again 
 ```{julia;label=plotallLT}
 plot(x=mb1_alltrials.looking_time, xgroup=mb1_alltrials.trial_type, Geom.subplot_grid(Geom.histogram))
 ```
 
-Now we can finally fit the model again. We use the same formula as above, so no need to specify it again
+Now we can finally fit the model again. 
 
 ```{julia;label=mixed_censored}
-m1_censored = fit(MixedModel, m1bform, mb1_alltrials, REML=true)
+m1_censored = fit(MixedModel, m1form, mb1_alltrials, REML=true)
 ```
+
+Let's look at the residuals again, it's not perfect, yet (of course), but better
+
+```{julia;label=mixed_censored_viz}
+plot(x=fitted(m1_censored), y=residuals(m1_censored), Geom.density2d)
+```
+
