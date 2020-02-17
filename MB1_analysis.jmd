@@ -27,7 +27,8 @@ mb1 = CSV.read(
     download("https://raw.githubusercontent.com/manybabies/mb1-analysis-public/fa7e77c026a4dc0b0bb7e78d3bf3771c9bc2f7cb/processed_data/03_data_trial_main.csv"),
     missingstrings=["NA","N/A"],
     truestrings=["TRUE"],
-    falsestrings=["FALSE"])
+    falsestrings=["FALSE"]);
+first(mb1, 10)
 describe(mb1)
 ```
 
@@ -72,7 +73,7 @@ plot(x=mb1a.log_lt, Geom.histogram)
 
 ### Model Fitting 
 
-Fit the linear mixed-effects model from the paper.
+Fit the linear mixed-effects model from the paper. We replicate the reported results. 
 
 ```{julia;label=mixed}
 m1form = @formula log(looking_time) ~ trial_type * method +
@@ -90,7 +91,7 @@ The thresholding of the response produces some unusual patterns in the residuals
 plot(x=fitted(m1), y=residuals(m1), Geom.density2d)
 ```
 
-#### Intended maximal model 
+#### Preregistered maximal model 
 
 Fit the authors' intended maximal mixed-effects model. lme4 in R did initally not converge and now throws singularity warnings for this model. 
 We switch from REML to ML. 
@@ -122,7 +123,8 @@ m3form = @formula log(looking_time) ~ trial_type * method +
                    zerocorr(1 + trial_type * trial_num | subid_unique) +
                    zerocorr(1 + trial_type * age_mo | lab) +
                    zerocorr(1 + method + age_mo * nae | item);
-m3 = fit(MixedModel, m3form, mb1a, REML=false)
+m3 = fit(MixedModel, m3form, mb1a, REML=false);
+VarCorr(m3)
 
 m3.rePCA
 ```
@@ -137,7 +139,9 @@ m4form = @formula log(looking_time) ~ trial_type * method +
                    zerocorr(1 + trial_type | subid_unique) +
                    zerocorr(1 + age_mo | lab) +
                    zerocorr(1 + method + nae | item);
-m4 = fit(MixedModel, m4form, mb1a, REML=false)
+m4 = fit(MixedModel, m4form, mb1a, REML=false);
+
+VarCorr(m4)
 
 m4.rePCA
 ```
@@ -187,6 +191,22 @@ describeblocks(m2)
 ```
 
 It turns out there are way less unique observations now, which is of course a problem. 
+
+
+We can also see the issue when inspecting the dataset itself.
+
+```{julia;label=dataset_unique}
+
+cellmeans = by(mb1a, [:trial_type, :nae, :method], 
+  meanLT = :looking_time => mean, 
+  sdLT = :looking_time => std, 
+  n_labs = :lab => (x -> length(unique(x))),
+  n_sub = :subid => (x -> length(unique(x))),
+  n_sub_unique = :subid_unique => (x -> length(unique(x))),
+  n_obs = :looking_time => length
+)
+
+```
 
 
 
