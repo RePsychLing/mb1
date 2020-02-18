@@ -32,6 +32,18 @@ first(mb1, 10)
 describe(mb1)
 ```
 
+This is a preprocessed dataset, the key columns are:
+- looking_time : dependent variable, in milliseconds  
+- trial_type : condition, either IDS or ADS (infant- or adult-directed speech)  
+- method : 3 levels (hpp, singlescreen, eyetracking; the latter two are eye-movement-baed, the former measures head-movement)   
+- trial_num : 1 - 16, trial in the experiment  
+- age_mo : infant age in months, between 3 and 15  
+- nae : North-American English, boolean, whether infants learned NAE (the stimulus language)
+- subid_unique : participant identifier
+- lab : contributing label
+
+Note: labs could use multiple methods, participants were tested in age groups (3-6, 6-9. 9-12, 12-15 months) and labs could contribute multiple age groups.
+
 The `gender` variable should be `F`, `M`, or `missing` but some values are miscoded. 
 ```{julia;label=gendervals}
 countmap(mb1.gender)
@@ -39,7 +51,7 @@ countmap(mb1.gender)
 
 So first let's get the data in shape. In Julia, there is DataFramesMeta for this purpose. 
 
-Recode the levels of `gender`, add the `item` variable, center the `age_mo`, and relevel the `method` and `age_group` to match with the R data frame.
+Recode the levels of `gender`, add the `item` variable (join condition and stimulus information), center the `age_mo`, and relevel `method` and `age_group`.
 Add log-transformed looking time `log_lt` for visualization. 
 Drop observations with a missing response (`looking_time`).
 
