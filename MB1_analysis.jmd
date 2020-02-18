@@ -9,7 +9,7 @@ using DataFramesMeta # dplyr-like operations
 using MixedModels
 using StatsBase      # basic statistics functions
 using RCall          # Call R from Julia
-using JellyMe4       # in development; pass models between Julia and R, get via pkg> add https://github.com/palday/JellyMe4.jl
+
 R"library(lme4)"
 R"library(dplyr)"
 ```
