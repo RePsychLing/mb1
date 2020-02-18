@@ -335,14 +335,6 @@ git-tree-sha1 = "b34d7cef7b337321e97d22242c3c2b91f476748e"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.0"
 
-[[JellyMe4]]
-deps = ["DataFrames", "MixedModels", "RCall"]
-git-tree-sha1 = "0653229282c91121dd937330ed83fd576d263412"
-repo-rev = "master"
-repo-url = "https://github.com/palday/JellyMe4.jl"
-uuid = "19ac8677-9a15-4623-9afd-84acc6165ce7"
-version = "0.1.0"
-
 [[Juno]]
 deps = ["Base64", "Logging", "Media", "Profile", "Test"]
 git-tree-sha1 = "30d94657a422d09cb97b6f86f04f750fa9c50df8"
@@ -420,8 +412,10 @@ uuid = "e1d29d7a-bbdc-5cf2-9ac0-f12de2c33e28"
 version = "0.4.3"
 
 [[MixedModels]]
-deps = ["BlockArrays", "BlockDiagonals", "Distributions", "GLM", "LinearAlgebra", "NLopt", "NamedArrays", "Printf", "ProgressMeter", "Random", "Showoff", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "StatsModels", "Tables", "TypedTables"]
-git-tree-sha1 = "db856db67b1f1b8021d0713f76092fe60958812b"
+deps = ["BlockArrays", "BlockDiagonals", "Distributions", "Feather", "GLM", "LinearAlgebra", "NLopt", "NamedArrays", "Pkg", "Printf", "ProgressMeter", "Random", "Showoff", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "StatsModels", "Tables", "TypedTables"]
+git-tree-sha1 = "daca3bc883c2cb167a72c7284398b475ba386821"
+repo-rev = "zif-workshop"
+repo-url = "https://github.com/JuliaStats/MixedModels.jl.git"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 version = "2.2.0"
 
