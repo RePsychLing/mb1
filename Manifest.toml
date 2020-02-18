@@ -24,6 +24,12 @@ git-tree-sha1 = "4f1109cf20b2a31b5196f346bba07b2c61587442"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
 version = "2.4.1"
 
+[[Arrow]]
+deps = ["CategoricalArrays", "Dates"]
+git-tree-sha1 = "c86df6ed41b3bd192d663e5e0e7cac0d11fd4375"
+uuid = "69666777-d1a9-59fb-9406-91d4454c9d45"
+version = "0.2.4"
+
 [[AxisAlgorithms]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "WoodburyMatrices"]
 git-tree-sha1 = "a4d07a1c313392a77042855df46c5f534076fab9"
@@ -47,9 +53,9 @@ version = "0.5.8"
 
 [[BlockArrays]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "991b73d29f2166fb8acc2ac9e0093a8b9143cc96"
+git-tree-sha1 = "54a8bc44883dc33002bd954ba6d336ee86ec62d1"
 uuid = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
-version = "0.10.2"
+version = "0.11.1"
 
 [[BlockDiagonals]]
 deps = ["FillArrays", "LinearAlgebra"]
@@ -207,9 +213,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "e063d0b5d27180b98edacd2b1cb90ecfbc171385"
+git-tree-sha1 = "6b19601c0e98de3a8964ed33ad73e130c7165b1d"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.21.12"
+version = "0.22.4"
 
 [[DocStringExtensions]]
 deps = ["LibGit2", "Markdown", "Pkg", "Test"]
@@ -228,6 +234,12 @@ deps = ["Libdl", "Pkg"]
 git-tree-sha1 = "05674f209a6e3387dd103a945b0113eeb64b1a58"
 uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
 version = "3.3.9+3"
+
+[[Feather]]
+deps = ["Arrow", "CategoricalArrays", "DataFrames", "Dates", "FlatBuffers", "Mmap", "Tables"]
+git-tree-sha1 = "f00ed0cadaa2ff0ee31340482f3fbf9321ad2499"
+uuid = "becb17da-46f6-5d3c-ad1b-1c5fe96bc73c"
+version = "0.5.4"
 
 [[FilePathsBase]]
 deps = ["Dates", "LinearAlgebra", "Printf", "Test", "UUIDs"]
@@ -251,6 +263,12 @@ version = "2.2.0"
 git-tree-sha1 = "4aaea64dd0c30ad79037084f8ca2b94348e65eaa"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.7.1"
+
+[[FlatBuffers]]
+deps = ["Parameters", "Test"]
+git-tree-sha1 = "8582924ac52011d08da9cf1e67f13a71dbbc2594"
+uuid = "53afe959-3a16-52fa-a8da-cf864710bae9"
+version = "0.5.4"
 
 [[ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "NaNMath", "Random", "SpecialFunctions", "StaticArrays"]
@@ -412,8 +430,10 @@ uuid = "e1d29d7a-bbdc-5cf2-9ac0-f12de2c33e28"
 version = "0.4.3"
 
 [[MixedModels]]
-deps = ["BlockArrays", "BlockDiagonals", "Distributions", "GLM", "LinearAlgebra", "NLopt", "NamedArrays", "Printf", "ProgressMeter", "Random", "Showoff", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "StatsModels", "Tables", "TypedTables"]
-git-tree-sha1 = "db856db67b1f1b8021d0713f76092fe60958812b"
+deps = ["BlockArrays", "BlockDiagonals", "Distributions", "Feather", "GLM", "LinearAlgebra", "NLopt", "NamedArrays", "Pkg", "Printf", "ProgressMeter", "Random", "Showoff", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "StatsModels", "Tables", "TypedTables"]
+git-tree-sha1 = "0ef50e0329da0845ecabb2ded7f90a589657afcb"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaStats/MixedModels.jl.git"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 version = "2.2.0"
 
@@ -616,9 +636,9 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[SpecialFunctions]]
 deps = ["OpenSpecFun_jll"]
-git-tree-sha1 = "268052ee908b2c086cc0011f528694f02f3e2408"
+git-tree-sha1 = "e19b98acb182567bcb7b75bb5d9eedf3a3b5ec6c"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "0.9.0"
+version = "0.10.0"
 
 [[SplitApplyCombine]]
 deps = ["Dictionaries", "Indexing"]
