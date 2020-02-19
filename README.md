@@ -5,6 +5,7 @@ Re-analysis of data from the [`ManyBabies1: Infant-directed Speech Preference`](
 
 * For more information about the ManyBabies project, see http://manybabies.stanford.edu/  
 * The data and main analysis can be found at https://github.com/manybabies/mb1-analysis-public, stimuli, protocol, and further documentation is at https://osf.io/re95x/  
+  * This is the paper (which we ask to cite if you do anything with this dataset) The ManyBabies Consortium. (2019). "Quantifying sources of variability in infancy research using the infant-directed speech preference." In press at *Advances in Methods and Practices in Psychological Science (AMPPS)*. [Preprint](https://psyarxiv.com/s98ab/)
 
 The repository contains:  
 
