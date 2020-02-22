@@ -126,7 +126,6 @@ According to `rePCA` there is overparameterization for each of the three random 
 Let's go with zerocorr parameter linear mixed models. 
 
 
-
 ```{julia;label=mixed3}
 m3form = @formula log(looking_time) ~ trial_type * method +
                    trial_type * trial_num +
@@ -156,6 +155,7 @@ m4 = fit(MixedModel, m4form, mb1a, REML=false);
 VarCorr(m4)
 
 m4.rePCA
+MixedModels.likelihoodratiotest(m3, m4)
 ```
 
 This looks ok. So let's expand with CPs again. 
@@ -171,10 +171,11 @@ m5form = @formula log(looking_time) ~ trial_type * method +
                    (1 + age_mo | lab);
 m5 = fit(MixedModel, m5form, mb1a, REML=false)
 
-m5.rePCA
+m5.rePCA                                  # overparameterized
+MixedModels.likelihoodratiotest(m4, m5)
 ```
-
-That looks good and there are sizeable item-related correlation parameters. 
+We are not losing goodness of fit. That looks almost good; there are sizeable item-related correlation parameters, 
+but the item-related RE structure is overparameterized. We should possibly drop the large CP. 
 
 ### What happens if the random effects are not proberly nested?
 
